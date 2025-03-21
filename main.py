@@ -8,10 +8,6 @@ bob_intents.messages=True
 bob_intents.message_content=True
 bot = discord.Client(intents=bob_intents)
 
-@bot.event
-async def on_ready():
-#    await message.channel.send("Where is a1")
-
 def getElems(root, tagName):
     return root.getElementsByTagName(tagName)
 def search(handle):
@@ -70,4 +66,5 @@ async def on_message(message):
         except:
             await message.channel.send("User {} not found dumbass")
 
-bot.run("<SECRET>")
+with open(".SECRET") as f:
+    bot.run(f.readline())
