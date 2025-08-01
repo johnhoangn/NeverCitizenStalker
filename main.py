@@ -152,7 +152,7 @@ def search_bob(handle):
         block.title = f"{user_handle}"
         block.description = f"aka {user_name}" if user_handle != user_name else None
         block.set_thumbnail(url = user_thumbnail)
-        block.description = "https://robertsspaceindustries.com/en/citizens/{handle}"
+        block.description = f"https://robertsspaceindustries.com/en/citizens/{handle}"
         
 #        if citizen_record != "n/a":
 #            block.add_field(name = "UEEID", value = f"{citizen_record}")
@@ -277,7 +277,9 @@ async def on_message(message):
             block, notes = search_bob(name)
 
             await message.channel.send(embed=block)
-            await message.channel.send("**Notes:**\n" + notes)
+
+            if len(notes) > 0:
+                await message.channel.send("**Notes:**\n" + notes)
 
     except Exception as e:
         await message.channel.send("Bob error.")
