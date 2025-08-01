@@ -5,3 +5,5 @@ source .venv/bin/activate
 pip install discord.py
 pip install html5lib
 pip install requests
+
+touch .SECRET
