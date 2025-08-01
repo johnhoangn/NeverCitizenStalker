@@ -6,6 +6,10 @@ import json
 import traceback
 
 
+# FUTURE DEVELOPMENT:
+# USE 'dir(object)' TO EXPLORE ITS MEMBERS.
+
+
 bob_intents = discord.Intents.default()
 bob_intents.messages=True
 bob_intents.message_content=True
@@ -15,22 +19,21 @@ bot = discord.Client(intents=bob_intents)
 bobbusy = False
 
 
-def getNotes(handle):
+def get_notes(handle):
     handle = handle.strip()
     with open(r"notes.json", "r") as notes_file:
         notes = json.load(notes_file)
-        notes_string = "**Notes:**" + '\n- '
+        notes_string = ""
 
         if handle in notes and len(notes[handle]) > 0:
+            notes_string = '- '
             notes_string += "\n- ".join(notes[handle])
             notes_string += '\n'
-        else:
-            notes_string = "*No notes.*" + '\n'
 
     return notes_string
 
 
-def setNote(handle, note):
+def set_note(handle, note):
     handle = handle.strip()
     with open(r"notes.json", "r") as old_notes:
         notes_data = json.load(old_notes)
@@ -47,7 +50,7 @@ def setNote(handle, note):
         notes_file.write(json.dumps(notes_data, indent=2))
 
 
-def deleteNote(handle, index):
+def delete_note(handle, index):
     handle = handle.strip()
     with open(r"notes.json", "r") as old_notes:
         notes_data = json.load(old_notes)
@@ -57,7 +60,7 @@ def deleteNote(handle, index):
         notes_file.write(json.dumps(notes_data, indent=2))
 
 
-def clearNotes(handle):
+def clear_notes(handle):
     handle = handle.strip()
     with open(r"notes.json", "r") as old_notes:
         notes_data = json.load(old_notes)
@@ -67,11 +70,11 @@ def clearNotes(handle):
         notes_file.write(json.dumps(notes_data, indent=2))
 
 
-def getElems(root, tagName):
+def get_elems(root, tagName):
     return root.getElementsByTagName(tagName)
 
 
-def getPage(handle):
+def get_page(handle):
     url = "https://robertsspaceindustries.com/en/citizens/" + handle
     if requests.get(url).status_code != 200:
         return 404
@@ -83,55 +86,55 @@ def getPage(handle):
 
 
 def exists(handle):
-    return getPage(handle) == 200
+    return get_page(handle) == 200
 
 
-def searchBob(handle):
+def search_bob(handle):
     handle = handle.strip()
-    output = ""
+    block = discord.Embed()
 
-    if getPage(handle) != 200:
-        return None
+    #if get_page(handle) != 200:
+    #    return None
 
     with open("response.html", "rb") as f:
         TreeBuilder = html5lib.getTreeBuilder("dom")
         parser = html5lib.HTMLParser(tree=TreeBuilder)
         dom = parser.parse(f)
 
+        user_thumbnail = "https://robertsspaceindustries.com/" + [elem for elem in dom.getElementsByTagName("div") if elem.getAttribute("class") == "thumb"][0].childNodes[1].getAttribute("src")
+        user_name = ""
+        user_handle = ""
+        citizen_recod = ""
+        main_organization_name = ""
+        main_organization_uri = ""
+        notes = get_notes(handle)
+        fluencies = []
+
         label_spans = [elem for elem in dom.getElementsByTagName("span") if elem.getAttribute("class") == "label"]
         for span in label_spans:
             for c in span.childNodes:
                 if "Handle name" in c.data:
                     root = c.parentNode.parentNode.parentNode
-                    output += "**U/H:** " + getElems(root, "strong")[0].childNodes[0].data + "/" + getElems(root, "strong")[1].childNodes[0].data + '\n'
+                    user_name = get_elems(root, "strong")[0].childNodes[0].data
+                    user_handle = get_elems(root, "strong")[1].childNodes[0].data
 
                 elif "Enlisted" in c.data:
                     root = c.parentNode.parentNode
-                    output += "**Enlisted:** " + getElems(root, "strong")[0].childNodes[0].data + '\n'
+                    enlisted = get_elems(root, "strong")[0].childNodes[0].data
 
                 elif "Fluency" in c.data:
                     root = c.parentNode.parentNode
-                    fluencies = []
 
-                    for text_nodes in getElems(root, "strong"):
+                    for text_nodes in get_elems(root, "strong"):
                         for fluency_node in text_nodes.childNodes:
                             fluency_list = fluency_node.data.split()
                             if len(fluency_list) > 0:
                                 for fluency in fluency_list:
                                     fluencies.append(re.sub(",", "", fluency.split()[0]))
 
-                    output += "**Fluencies:** " + '\n- '
-                    output += '\n- '.join(fluencies)
-
-                    output += '\n'
-
                 elif "UEE Citizen Record" in c.data:
                     root = c.parentNode.parentNode
-                    citrec = getElems(root, "strong")[0].childNodes[0].data
-                    if citrec == "n/a":
-                        output += "*Not registered with UEE.*" + '\n'
-                    else:
-                        output += citrec + '\n'
+                    citizen_record = get_elems(root, "strong")[0].childNodes[0].data
 
         title_spans = [elem for elem in dom.getElementsByTagName("span") if elem.getAttribute("class") == "title"]
 
@@ -141,15 +144,31 @@ def searchBob(handle):
                     text = c._get_wholeText()
                     if "Main org" in text:
                         root = c.parentNode.parentNode
-                        output += "Main Org: [" + getElems(root, "a")[1].childNodes[0].data + "](https://robertsspaceindustries.com/en" + getElems(root, "a")[1].childNodes[0].get('href') + ")\n"
+                        main_organization_name = get_elems(root, "a")[1].childNodes[0].data
+                        main_organization_uri = "https://robertsspaceindustries.com/en" + get_elems(root, "a")[1].getAttribute('href')
         except:
-            output += "*Not in an organization.*" + '\n'
+            traceback.print_exc()
 
-        output += getNotes(handle) + '\n'
+        block.title = f"{user_handle}"
+        block.description = f"aka {user_name}" if user_handle != user_name else None
+        block.set_thumbnail(url = user_thumbnail)
+        block.description = "https://robertsspaceindustries.com/en/citizens/{handle}"
+        
+#        if citizen_record != "n/a":
+#            block.add_field(name = "UEEID", value = f"{citizen_record}")
+#        else:
+#            block.add_fied("UEEID", value = "*Not registered with UEE.*")
 
-    return output
+        if main_organization_name != "":
+            block.add_field(name = "*Main Organization*", value = f"[{main_organization_name}](https://robertsspaceindustries.com/en{main_organization_uri})")
+        else:
+            block.add_field(name = "*Main Organization*", value = "Has no friends.")
 
-def searchOrg(orgName):
+        block.add_field(name = "*Fluencies*", value = '- ' + '- \n'.join(fluencies))
+
+    return block, notes
+
+def search_org(orgName):
     output = ""
 
     with open("response.html", "w") as f:
@@ -216,10 +235,10 @@ async def on_message(message):
             bobbusy = False
             return
 
-        if " org" in message_body:
+        if " org " in message_body:
             try:
                 name = message_body.split()[1]
-                output = searchOrg(name)
+                output = search_org(name)
                 await message.channel.send(output)
             except:
                 await message.channel.send("Org {} not found")
@@ -234,16 +253,16 @@ async def on_message(message):
                     bobbusy = False
                     return
 
-                setNote(name, ' '.join(message_body.split()[3:]))
+                set_note(name, ' '.join(message_body.split()[3:]))
                 await message.channel.send("Set note for " + name + '\n' + ' '.join(message_body.split()[3:]))
 
             elif command == "dnote":
                 index = message_body.split()[3]
-                deleteNote(name, index)
+                delete_note(name, index)
                 await message.channel.send("Deleted note #" + index)
 
             elif command == "clearnotes":
-                clearNotes(name)
+                clear_notes(name)
                 await message.channel.send("Deleted all notes.")
 
             else:
@@ -255,8 +274,10 @@ async def on_message(message):
                 bobbusy = False
                 return
 
-            output = search(name)
-            await message.channel.send(output)
+            block, notes = search_bob(name)
+
+            await message.channel.send(embed=block)
+            await message.channel.send("**Notes:**\n" + notes)
 
     except Exception as e:
         await message.channel.send("Bob error.")
@@ -264,5 +285,8 @@ async def on_message(message):
 
     bobbusy = False
 
+#search_bob("TwoHanded")
+
 with open(".SECRET") as f:
     bot.run(f.readline())
+
